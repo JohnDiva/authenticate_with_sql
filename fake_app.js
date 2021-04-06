@@ -2,18 +2,17 @@ const express = require('express')
 const cookieParser = require("cookie-parser")
 const { v4: uuidv4 } = require('uuid');
 const matchCredentials = require('./utils.js')
+const {User}  = require('./fake_models.js');
 const app = express()
-
-const {User}  = require('./fake_models.js')
-
 app.set('view engine', 'ejs')
 app.use(cookieParser())
 app.use(express.urlencoded({extended: false}))
 
 
+
 app.get('/', function(req, res){
     res.render('pages/home')
-})
+});
 
 //create a user account
 
@@ -38,6 +37,7 @@ app.post('/create', async function(req,res){
         timeoflogin:null
  })
  console.log(user.session_id)
+ console.log(user.username)
 
     res.redirect('/')
 }
@@ -47,19 +47,24 @@ app.post('/create', async function(req,res){
 
 })
 
+
 //login
 app.post('/login', async function(req,res){
-    if(matchCredentials(req.body)) {
+
+    if( await matchCredentials(req.body)) {
         
        let id = uuidv4()
        let _timeOfLogin = Date.now();
 
       
        
-       const user = await User.create({session_id: null})
+    (async ()=> {
+        let user = await User.create({session_id: null})
         user.session_id= id
         await user.save();
         console.log(user.session_id)
+    }) ();
+    
     
 
 
@@ -80,28 +85,35 @@ app.post('/login', async function(req,res){
 
 })
 
+
 //this is the protected route
 app.get('/supercoolmembersonlypage',async function(req, res){ 
     let id = req.cookies.SID;
 
 
-    
-    const user= await User.findOne({
+    try {
+    var login_user= await User.findOne({
         where:{
             session_id: id
         }
-    })
-          console.log(user.session_id)
-
-    if (user.session_id !== undefined || user.session_id !== null || user.session_id === id){
+    });
+   }
+   catch(err){
+       res.render('pages/error')
+   }
+    try{
+    if (login_user.session_id === id){
         res.render('pages/members') 
     }
+  
     else {
         res.render('pages/error') 
     }
-
-
-    
+}
+catch(err){
+    res.render('pages/error')
+}
+   
 })
 
 
@@ -112,7 +124,7 @@ app.get('/supercoolmembersonlypage',async function(req, res){
     })
 
 
-
+//log out feature
 app.get('/logout', function(req,res){
    
     let id = req.cookies.SID;
@@ -140,10 +152,6 @@ app.get('/logout', function(req,res){
 app.all('*', function(req, res){ 
     res.render('pages/error') 
 })
-
-
-
-
 
 app.listen(1612)
 
