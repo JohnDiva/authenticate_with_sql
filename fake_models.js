@@ -12,7 +12,7 @@ User.init({
 
 (async () => {
     await sequelize.sync()
-})()
+})();
 
 let models = {
     User: User
